@@ -1,9 +1,9 @@
 import numpy as np
 import pandas as pd
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder
 
-DATA_PATH = 'data/kddcup.data.corrected'
-TEST_PATH = 'data/corrected'
+DATA_PATH = 'data/kddcup.data_10_percent_corrected'
 FEATURE_NAMES = ['duration', 'protocol_type', 'service', 'flag', 'src_bytes', 'dst_bytes', 'land', 'wrong_fragment',
                  'urgent', 'hot', 'num_failed_logins', 'logged_in', 'num_compromised', 'root_shell', 'su_attempted',
                  'num_root', 'num_file_creations', 'num_shells', 'num_access_files', 'num_outbound_cmds',
@@ -16,29 +16,22 @@ CAT_FEATURES = ['protocol_type', 'service', 'flag']
 CAT_ENCODERS = {}
 
 
-def load_kdd_train_set():
+def load_kdd_data_set():
     df = pd.read_csv(DATA_PATH, names=FEATURE_NAMES + ['label'])
-    return preprocess_dataset(df, is_train=True)
+    X, y = preprocess_dataset(df)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=0.8)
+    return X_train, X_test, y_train, y_test
 
 
-def load_kdd_test_set():
-    df_test = pd.read_csv(TEST_PATH, names=FEATURE_NAMES + ['label'])
-    return preprocess_dataset(df_test, is_train=False)
-
-
-def preprocess_dataset(df, is_train=True):
+def preprocess_dataset(df):
     new_data = df
-
-    if not is_train and len(CAT_ENCODERS) == 0:
-        raise Exception('Need to load training first for LabelEncoders init')
 
     y = (df['label'] == 'normal.').astype(int)
     y[np.where(df['label'] != 'normal.')[0]] = -1
 
     for cat_feat in CAT_FEATURES:
-        if is_train:
-            CAT_ENCODERS[cat_feat] = OneHotEncoder(handle_unknown='ignore', sparse=False).fit(
-                df[cat_feat].values.reshape(-1, 1))
+        CAT_ENCODERS[cat_feat] = OneHotEncoder(handle_unknown='ignore', sparse=False).fit(
+            df[cat_feat].values.reshape(-1, 1))
         new_feats_df = pd.DataFrame(CAT_ENCODERS[cat_feat].transform(df[cat_feat].values.reshape(-1, 1)),
                                     columns=CAT_ENCODERS[cat_feat].categories_[0])
         new_data = pd.concat([new_data.drop(columns=cat_feat), new_feats_df], axis=1)
