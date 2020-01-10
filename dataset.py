@@ -13,29 +13,33 @@ FEATURE_NAMES = ['duration', 'protocol_type', 'service', 'flag', 'src_bytes', 'd
                  'dst_host_same_src_port_rate', 'dst_host_srv_diff_host_rate', 'dst_host_serror_rate',
                  'dst_host_srv_serror_rate', 'dst_host_rerror_rate', 'dst_host_srv_rerror_rate']
 CAT_FEATURES = ['protocol_type', 'service', 'flag']
+ATTACK_NAMES = ['smurf.', 'neptune.']
 CAT_ENCODERS = {}
 
 
 def load_kdd_data_set():
+    datasets = {}
     df = pd.read_csv(DATA_PATH, names=FEATURE_NAMES + ['label'])
-    X, y = preprocess_dataset(df)
-    X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=0.8)
-    return X_train, X_test, y_train, y_test
+    for attack in ATTACK_NAMES:
+        X, y = preprocess_dataset(df, attack)
+        X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=0.8)
+        datasets[attack] = {'X_train': X_train, 'X_test': X_test, 'y_train': y_train, 'y_test': y_test}
+    return datasets
 
 
-def preprocess_dataset(df):
-    new_data = df
+def preprocess_dataset(df, attack_name):
+    new_data = df.loc[df.label.isin(['normal.', attack_name])].reset_index()
 
-    y = (df['label'] == 'normal.').astype(int)
-    y[np.where(df['label'] != 'normal.')[0]] = -1
+    y = (new_data['label'] == 'normal.').astype(int)
+    y.loc[np.where(new_data['label'] == attack_name)[0]] = -1
 
     for cat_feat in CAT_FEATURES:
         CAT_ENCODERS[cat_feat] = OneHotEncoder(handle_unknown='ignore', sparse=False).fit(
             df[cat_feat].values.reshape(-1, 1))
-        new_feats_df = pd.DataFrame(CAT_ENCODERS[cat_feat].transform(df[cat_feat].values.reshape(-1, 1)),
+        new_feats_df = pd.DataFrame(CAT_ENCODERS[cat_feat].transform(new_data[cat_feat].values.reshape(-1, 1)),
                                     columns=CAT_ENCODERS[cat_feat].categories_[0])
         new_data = pd.concat([new_data.drop(columns=cat_feat), new_feats_df], axis=1)
 
-    X = new_data.drop(columns=['label']).values
+    X = new_data.drop(columns=['label'])
 
     return X, y
