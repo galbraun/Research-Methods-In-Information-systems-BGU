@@ -29,6 +29,8 @@ def load_kdd_data_set():
 
 def preprocess_dataset(df, attack_name):
     new_data = df.loc[df.label.isin(['normal.', attack_name])].reset_index()
+    new_data = new_data.sample(frac=1).sample(frac=0.1).reset_index(
+        drop=True)  # first sampling for shuffle , second for sampling
 
     y = (new_data['label'] == 'normal.').astype(int)
     y.loc[np.where(new_data['label'] == attack_name)[0]] = -1
