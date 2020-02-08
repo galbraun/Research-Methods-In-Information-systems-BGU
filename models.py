@@ -1,6 +1,7 @@
 from sklearn.ensemble import IsolationForest
 from sklearn.svm import OneClassSVM
 from sklearn.cluster import KMeans
+from hdbscan import HDBSCAN
 
 RANDOM_STATE = 42
 
@@ -13,6 +14,7 @@ def train_OCSVM(X, params):
     pass
 
 def train_hdbscan(X, params):
+    clf = HDBSCAN(X, params)
     pass
 
 def train_KMeans(X, params):
